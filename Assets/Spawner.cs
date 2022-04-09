@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
@@ -7,14 +7,12 @@ using Random = UnityEngine.Random;
 public class Spawner : MonoBehaviour
 {
     public GameObject prefab;
-    public GameObject scoreObject;
 
     public Text scoreText;
     
     public Transform floor;
 
-    private readonly Tuple<Transform, Transform>[] _objectPool = new Tuple<Transform, Transform>[10];
-    private readonly Transform[] _scores = new Transform[10];
+    private readonly Transform[] _obstacles = new Transform[10];
     private Transform _transform;
 
     public int atOnce = 3;
@@ -31,14 +29,10 @@ public class Spawner : MonoBehaviour
     {
         Instance = this;
         _transform = transform;
-        for (var i = 0; i < _objectPool.Length; i++)
+        for (var i = 0; i < _obstacles.Length; i++)
         {
-            _objectPool[i] =
-                new Tuple<Transform, Transform>(Instantiate(prefab, _transform).transform, Instantiate(prefab, _transform).transform);
-            _objectPool[i].Item1.gameObject.SetActive(false);
-            _objectPool[i].Item2.gameObject.SetActive(false);
-            _scores[i] = Instantiate(scoreObject, _transform).transform;
-            _scores[i].gameObject.SetActive(false);
+            _obstacles[i] = Instantiate(prefab, _transform).transform;
+            _obstacles[i].gameObject.SetActive(false);
         }
     }
 
@@ -55,44 +49,35 @@ public class Spawner : MonoBehaviour
 
     private void CheckObstacles()
     {
-        var countSpawned = _objectPool.Count(obj => obj.Item1.gameObject.activeInHierarchy);
+        var countSpawned = _obstacles.Count(obj => obj.gameObject.activeInHierarchy);
         if (countSpawned > atOnce) return;
-        for (var i = 0; i < _objectPool.Length && countSpawned <= atOnce; i++)
+        for (var i = 0; i < _obstacles.Length && countSpawned <= atOnce; i++)
         {
-            if (_objectPool[i].Item1.gameObject.activeInHierarchy) continue;
+            if (_obstacles[i].gameObject.activeInHierarchy) continue;
             var variety = Random.Range(0, Jump.Instance.jumpHeights.Length);
-            Respawn(_objectPool[i], variety);
+            Respawn(_obstacles[i], variety);
             countSpawned++;
         }
     }
     
-    private void Respawn(Tuple<Transform, Transform> obj, int variety)
+    private void Respawn(Transform obj, int variety)
     {
-        var lastPosition = _objectPool.OrderBy(o => o.Item1.position.x).LastOrDefault()?.Item1
+        var lastPosition = _obstacles.OrderBy(o => o.position.x).LastOrDefault()?
                                .position
                            ?? _transform.position;
         var height = Jump.Instance.jumpHeights[variety] - 1;
         var position = floor.position;
-        lastPosition.y = position.y + 0.5f + height * 0.5f;
-        var (item1, item2) = obj;
-        item1.position = lastPosition + new Vector3(10f * _distance / atOnce, 0, 0);
-        item1.localScale = new Vector3(1, height, 1); 
-        item1.gameObject.SetActive(true);
-        var newHeight = 50;
-        lastPosition.y += newHeight * 0.5f;
-        item2.position = lastPosition + new Vector3(10f * _distance / atOnce, height * 0.5f + 2.5f, 0);
-        item2.localScale = new Vector3(1, newHeight, 1); 
-        item2.gameObject.SetActive(true);
-
-        var scoreObj = _scores.First(score => !score.gameObject.activeInHierarchy);
-
-        scoreObj.position = lastPosition + new Vector3(10f * _distance / atOnce, -newHeight*0.5f + 1.25f, 0);
-        scoreObj.gameObject.SetActive(true);
+        // lastPosition.y = position.y + 0.5f + height * 0.5f;
+        lastPosition.y = position.y + height + 1.75f;
+        lastPosition.x += 10f * _distance / atOnce;
+        obj.gameObject.GetComponent<Obstacle>().typeText.text = (variety + 1).ToString();
+        obj.gameObject.SetActive(true);
+        obj.position = lastPosition;
     }
 
     public void UpdateScore()
     {
-        scoreText.text = $"Score: {Score}";
+        scoreText.text = $"PONT: {Score}";
     }
 
     public void ObstacleLeftTheScreen(GameObject obst)
@@ -114,17 +99,10 @@ public class Spawner : MonoBehaviour
         UpdateScore();
         Jump.Instance.Reset();
         Time.timeScale = 1;
-        foreach (var (item1, item2) in _objectPool)
+        foreach (var item in _obstacles)
         {
-            item1.gameObject.SetActive(false);
-            item2.gameObject.SetActive(false);
+            item.gameObject.SetActive(false);
         }
-
-        foreach (var score in _scores)
-        {
-            score.gameObject.SetActive(false);
-        }
-
         Obstacle.Speed = 3;
         _distance = Obstacle.Speed;
         
