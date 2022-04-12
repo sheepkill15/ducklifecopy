@@ -9,10 +9,13 @@ public class Spawner : MonoBehaviour
     public GameObject prefab;
 
     public Text scoreText;
+    public Text highScoreText;
     
     public Transform floor;
 
     private readonly Transform[] _obstacles = new Transform[10];
+    
+    
     private Transform _transform;
 
     public int atOnce = 3;
@@ -90,6 +93,15 @@ public class Spawner : MonoBehaviour
     {
         gameOverScreen.SetActive(true);
         Time.timeScale = 0;
+
+        int highscore = PlayerPrefs.GetInt("legtobb_pont", 0);
+        if (Score > highscore)
+        {
+            PlayerPrefs.SetInt("legtobb_pont", Score);
+            highscore = Score;
+        }
+
+        highScoreText.text = $"Eddigi legmagasabb pontszám: {highscore}";
     }
 
     public void Restart()
